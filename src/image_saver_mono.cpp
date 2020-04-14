@@ -5,6 +5,8 @@
 #include <iostream>
 using namespace std;
 
+std::string COMPRESSED_IMAGE_TOPIC =  "/camera/fisheye1/image_raw/compressed";
+
 std::string BASE = "/home/manohar/try/left_images/";
 std::string PREFIX = "image";
 std::string POSTFIX = ".png";
@@ -30,7 +32,11 @@ void imageCallback(const sensor_msgs::CompressedImageConstPtr& msg)
 
             #if 1
             char padding[50];
+            #if 0 // 0 for i, 1 for timestamp
             sprintf( padding, "%06d", i );
+            #else
+            sprintf( padding, "%ld", msg->header.stamp.toNSec() );
+            #endif
             std::string fname =  BASE+"/"+PREFIX+padding+POSTFIX;
             i++;
             std::cout << "Write file" << fname << "\n";
@@ -57,7 +63,6 @@ int main(int argc, char **argv)
   // cv::namedWindow("view");
   // cv::startWindowThread();
 
-  std::string COMPRESSED_IMAGE_TOPIC =  "/camera/fisheye1/image_raw/compressed";
   std::cout << "COMPRESSED_IMAGE_TOPIC = " << COMPRESSED_IMAGE_TOPIC << std::endl;
   ros::Subscriber sub = nh.subscribe(COMPRESSED_IMAGE_TOPIC, 1, imageCallback);
   ros::spin();

@@ -1,3 +1,6 @@
+#include <iostream>
+using namespace std;
+
 #include <ros/ros.h>
 #include <rosbag/bag.h>
 #include <rosbag/view.h>
@@ -21,7 +24,7 @@ std::string LEFT_IMAGE_TOPIC =  "/camera/fisheye1/image_raw";
 std::string RIGHT_IMAGE_TOPIC =  "/camera/fisheye2/image_raw";
 
 
-std::string BASE = "/home/manohar/try/sync_stereo_pairs/";
+std::string SAVE_PATH = "/home/manohar/try/sync_stereo_pairs/";
 std::string LEFT_PREFIX = "leftimage-";
 std::string RIGHT_PREFIX = "rightimage-";
 std::string POSTFIX = ".png";
@@ -48,30 +51,34 @@ public:
 };
 
 // Callback for synchronized messages
+// #define debug_msg(msg) msg;
+#define debug_msg(msg) ;
 void callback(const sensor_msgs::Image::ConstPtr &l_img,
               const sensor_msgs::Image::ConstPtr &r_img
               // const sensor_msgs::CameraInfo::ConstPtr &l_info,
               // const sensor_msgs::CameraInfo::ConstPtr &r_info
           )
 {
+    debug_msg(
     std::cout << "callback\t";
     std::cout << "l_img.t=" << l_img->header.stamp << "\t";
     std::cout << "r_img.t=" << r_img->header.stamp << "\t";
+    )
 
     ros::Duration diff = l_img->header.stamp - last_save;
     if( diff < save_every_sec )
     {
-        std::cout << "....SKIP\n";
+        debug_msg( std::cout << "....SKIP\n"; )
         return;
     }
-    std::cout << std::endl;
+    debug_msg( std::cout << std::endl; )
 
 
     last_save = l_img->header.stamp;
 
 
   // Stereo dataset is class variable to store data
-  // TODO PROCESSS IMAGE
+  // TODO: PROCESSS IMAGE
   cv::Mat l_image = cv_bridge::toCvShare(l_img, "bgr8")->image;
   cv::Mat r_image = cv_bridge::toCvShare(r_img, "bgr8")->image;
 
@@ -82,8 +89,8 @@ void callback(const sensor_msgs::Image::ConstPtr &l_img,
   sprintf( padding, "%ld", l_img->header.stamp.toNSec() );
   #endif
 
-  std::string fname_leftimage =  BASE+"/"+LEFT_PREFIX+padding+POSTFIX;
-  std::string fname_rightimage =  BASE+"/"+RIGHT_PREFIX+padding+POSTFIX;
+  std::string fname_leftimage =  SAVE_PATH+"/"+LEFT_PREFIX+padding+POSTFIX;
+  std::string fname_rightimage =  SAVE_PATH+"/"+RIGHT_PREFIX+padding+POSTFIX;
   std::cout << "Write file" << fname_leftimage << ", " << fname_rightimage << "\n";
   cv::imwrite(fname_leftimage, l_image );
   cv::imwrite(fname_rightimage, r_image );
@@ -102,17 +109,19 @@ void callback_compressed(const sensor_msgs::CompressedImage::ConstPtr &l_img,
               // const sensor_msgs::CameraInfo::ConstPtr &r_info
           )
 {
+    debug_msg(
     std::cout << "callback_compressed\t";
     std::cout << "l_img.t=" << l_img->header.stamp << "\t";
     std::cout << "r_img.t=" << r_img->header.stamp << "\t";
+    )
 
     ros::Duration diff = l_img->header.stamp - last_save;
     if( diff < save_every_sec )
     {
-        std::cout << "....SKIP\n";
+        debug_msg( std::cout << "....SKIP\n"; )
         return;
     }
-    std::cout << std::endl;
+    debug_msg( std::cout << std::endl; )
 
 
     last_save = l_img->header.stamp;
@@ -128,8 +137,8 @@ void callback_compressed(const sensor_msgs::CompressedImage::ConstPtr &l_img,
     sprintf( padding, "%ld", l_img->header.stamp.toNSec() );
     #endif
 
-    std::string fname_leftimage =  BASE+"/"+LEFT_PREFIX+padding+POSTFIX;
-    std::string fname_rightimage =  BASE+"/"+RIGHT_PREFIX+padding+POSTFIX;
+    std::string fname_leftimage =  SAVE_PATH+"/"+LEFT_PREFIX+padding+POSTFIX;
+    std::string fname_rightimage =  SAVE_PATH+"/"+RIGHT_PREFIX+padding+POSTFIX;
     std::cout << "Write file" << fname_leftimage << ", " << fname_rightimage << "\n";
     cv::imwrite(fname_leftimage, l_image );
     cv::imwrite(fname_rightimage, r_image );
@@ -143,10 +152,15 @@ void callback_compressed(const sensor_msgs::CompressedImage::ConstPtr &l_img,
 // Load bag
 void loadBag(const std::string &filename)
 {
+    cout << "open loadBag : " << filename << endl;
   rosbag::Bag bag;
   bag.open(filename, rosbag::bagmode::Read);
 
-
+  if( bag.isOpen() == false )
+  {
+      cout << "ERROR : Cannot open file: " << filename << endl;
+      exit(1);
+  }
     std::string l_cam_image = LEFT_IMAGE_TOPIC; //"/camera/fisheye1/image_raw";
     std::string r_cam_image = RIGHT_IMAGE_TOPIC; //"/camera/fisheye2/image_raw";
 
@@ -190,8 +204,15 @@ void loadBag(const std::string &filename)
 // Load bag compressed image
 void loadBagCompressed(const std::string &filename)
 {
+    cout << "open loadBagCompressed : " << filename << endl;
   rosbag::Bag bag;
   bag.open(filename, rosbag::bagmode::Read);
+
+  if( bag.isOpen() == false )
+  {
+      cout << "ERROR : Cannot open file: " << filename << endl;
+      exit(1);
+  }
 
 
   std::string l_cam_image = COMPRESSED_LEFT_IMAGE_TOPIC; //"/camera/fisheye1/image_raw/compressed";
@@ -240,14 +261,58 @@ int main( int argc, char ** argv )
     ros::init(argc, argv, "image_saver_stereo");
     ros::NodeHandle nh("~");
 
-    if( argc != 2 )
+
+    // Read params
+    string BAG_FULL_FILENAME;
+    float save_every_in_sec;
+    bool is_compressed_stream;
+    nh.param("BAG_FULL_FILENAME", BAG_FULL_FILENAME, string("X") );
+    nh.param("is_compressed_stream", is_compressed_stream, false );
+    nh.param("save_every_in_sec", save_every_in_sec, 1.0f );
+    assert( save_every_in_sec > 0 );
+    save_every_sec = ros::Duration( save_every_in_sec );
+
+    if( is_compressed_stream )
     {
-        std::cout << "INVALID USAGE....\nsample usage:\n\t" << argv[0] << " " << "filename.bag" << std::endl;
-        exit(1);
+        nh.param("LEFT_IMAGE_TOPIC",  COMPRESSED_LEFT_IMAGE_TOPIC, string("/left/image/raw") );
+        nh.param("RIGHT_IMAGE_TOPIC",  COMPRESSED_RIGHT_IMAGE_TOPIC, string("/right/image_raw") );
+        cout << "COMPRESSED_LEFT_IMAGE_TOPIC <-- " << COMPRESSED_LEFT_IMAGE_TOPIC << endl;
+        cout << "COMPRESSED_RIGHT_IMAGE_TOPIC <-- " << COMPRESSED_RIGHT_IMAGE_TOPIC << endl;
+    } else
+    {
+        nh.param("LEFT_IMAGE_TOPIC",  LEFT_IMAGE_TOPIC,  string("/left/image/raw") );
+        nh.param("RIGHT_IMAGE_TOPIC", RIGHT_IMAGE_TOPIC, string("/right/image_raw") );
+        cout << "LEFT_IMAGE_TOPIC <-- " << LEFT_IMAGE_TOPIC << endl;
+        cout << "LEFT_IMAGE_TOPIC <-- " << LEFT_IMAGE_TOPIC << endl;
     }
-    std::cout << "Load Bag : " << argv[1] << " argc="<< argc << std::endl;
+
+    nh.param("SAVE_PATH", SAVE_PATH, string( "/home/manohar/try/" ) );
+    nh.param("LEFT_PREFIX",  LEFT_PREFIX,  string( "left" ) );
+    nh.param("RIGHT_PREFIX", RIGHT_PREFIX, string( "right") );
+    nh.param("POSTFIX", POSTFIX, string( ".png" ) );
+    // TODO : read INDEX
+
+    cout << "BAG_FULL_FILENAME: " << BAG_FULL_FILENAME << endl;
+    cout << "is_compressed_stream: " << is_compressed_stream << endl;
+    cout << endl;
 
 
-    // loadBag( argv[1] );
-    loadBagCompressed( argv[1] );
+    cout << "save_every_in_sec: " << save_every_in_sec << endl;
+    cout << endl;
+
+    cout << "SAVE_PATH: " << SAVE_PATH << endl;
+    cout << "LEFT_PREFIX: " << LEFT_PREFIX << endl;
+    cout << "RIGHT_PREFIX: " << RIGHT_PREFIX << endl;
+    cout << "POSTFIX: " << POSTFIX << endl;
+    // done reading params
+
+
+
+
+    if( is_compressed_stream )
+        loadBagCompressed( BAG_FULL_FILENAME );
+    else
+        loadBag( argv[1] );
+
+    cout << "Done....\n";
 }

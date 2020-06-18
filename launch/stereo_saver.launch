@@ -3,7 +3,8 @@
 
 
     <node pkg="kros_utils" type="image_saver_stereo" name="image_saver_stereo" output="screen">
-        <param name="BAG_FULL_FILENAME" value="/home/manohar/workspace/outdoor_nav_Danjiao/sensor_calibration/fisheye_calibration_0421.bag" />
+        <!-- <param name="BAG_FULL_FILENAME" value="/home/manohar/workspace/outdoor_nav_Danjiao/sensor_calibration/fisheye_calibration_0421.bag" /> -->
+        <param name="BAG_FULL_FILENAME" value="/home/manohar/workspace/outdoor_nav_Danjiao/sensor_calibration/fisheye_long_0421.bag" />
 
         <param name="LEFT_IMAGE_TOPIC" value="/camera/fisheye1/image_raw/compressed" />
         <param name="RIGHT_IMAGE_TOPIC" value="/camera/fisheye2/image_raw/compressed" />
@@ -19,7 +20,7 @@
 
         <!-- not in use -->
         <!-- <param name="INDEX" value="number" /> -->
-        <param name="INDEX" value="timestamp" /> 
+        <param name="INDEX" value="timestamp" />
 
     </node>
 

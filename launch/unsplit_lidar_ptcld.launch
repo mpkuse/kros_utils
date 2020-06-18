@@ -1,0 +1,11 @@
+<launch>
+
+
+<node pkg="kros_utils" type="unsplit_lidar_ptcld" name="unsplit_lidar_ptcld" output="screen">
+    <param name="LIDARCLOUD_TOPIC_NAME" value="horizontal_laser_3d" />
+    <param name="OUTPUTCLOUD_TOPIC_NAME" value="horizontal_laser_3d_unsplit" />
+
+    <param name="cummulate_N_clouds" value="150" />
+</node>
+
+</launch>
